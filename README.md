@@ -5,10 +5,10 @@ A centralized Azure infrastructure API built with ASP.NET Core that provides sec
 ## Architecture
 
 ```
-Consuming App A
-Consuming App B   ->   AzureServicesAPI   ->   Azure Key Vault
-Consuming App C                           ->   Azure Service Bus (coming soon)
-                                          ->   Azure Blob Storage (coming soon)
+Consuming App A                           ->   Azure Key Vault
+Consuming App B   ->   AzureServicesAPI   ->   Azure Service Bus (coming soon)
+Consuming App C                           ->   Azure Blob Storage (coming soon)
+                                          
 ```
 
 Consuming applications authenticate via Entra (Azure AD) using client credentials and receive a JWT token. That token is used to call this API, which handles all Azure service communication internally using its own managed identity.
@@ -48,12 +48,6 @@ Models.Shared/
 - An Azure Entra (Azure AD) tenant
 - Visual Studio 2022 or later
 
-### Fork and Clone
-
-```bash
-git clone https://github.com/your-username/AzureServicesAPI.git
-cd AzureServicesAPI
-```
 
 ### Configuration
 
@@ -67,7 +61,7 @@ Use the provided `appsettings.Development.example.json` as a template.
 
 ### Step 1 - Create a Resource Group
 
-In the Azure portal create a new resource group to contain all resources for this project. Recommended name: `infra-api-rg`.
+In the Azure portal create a new resource group to contain all resources for this project. Recommended name: `az-serv-api`.
 
 Keep all resources in the same region to avoid cross-region latency.
 
@@ -75,7 +69,7 @@ Keep all resources in the same region to avoid cross-region latency.
 
 1. In the Azure portal search for **Key Vault** and select **Create**
 2. Select your resource group from Step 1
-3. Give it a globally unique name (e.g. `yourname-infra-kv`)
+3. Give it a globally unique name (e.g. `yourname-kv`)
 4. Select the same region as your resource group
 5. Leave all other settings as default and hit **Review + Create**
 
@@ -120,10 +114,7 @@ The API needs an app role so consuming applications can be granted permission to
 ]
 ```
 
-Generate a unique GUID for the `id` field using PowerShell:
-```powershell
-New-Guid
-```
+Generate a unique GUID for the `id`.
 
 3. Hit **Save**
 
