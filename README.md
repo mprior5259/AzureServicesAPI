@@ -53,8 +53,6 @@ Models.Shared/
 
 Create `appsettings.Development.json` in the `AzureServicesAPI` project root. This file is git-ignored and will never be committed.
 
-Use the provided `appsettings.Development.example.json` as a template.
-
 ---
 
 ## Azure Key Vault Setup
