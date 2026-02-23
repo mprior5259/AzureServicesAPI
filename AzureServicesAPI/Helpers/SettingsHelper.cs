@@ -7,7 +7,7 @@
 
         public SettingsHelper(IConfiguration configuration)
         {
-            KeyVaultUri = configuration["KeyVaultUri"] ?? throw new InvalidOperationException("KeyVaultUri is not configured.");
+            KeyVaultUri = configuration["KeyVault:VaultUri"] ?? throw new InvalidOperationException("KeyVaultUri is not configured.");
         }
     }
 }
