@@ -49,7 +49,7 @@ namespace AzureServicesAPI.Services
                     SecretValue = secret.Value
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return null;
             }

@@ -39,5 +39,54 @@ namespace Models.Shared.Helpers
 
             return target;
         }
+
+        public static List<TTarget> TryParseModelList<TSource, TTarget>(List<TSource> sourceList)
+            where TSource : class
+            where TTarget : class, new()
+        {
+            if (sourceList == null)
+                return new List<TTarget>();
+
+            // Build property dictionaries
+            var sourcePropDict = typeof(TSource).GetProperties()
+                .ToDictionary(p => p.Name, p => p);
+
+            var targetPropDict = typeof(TTarget).GetProperties()
+                .Where(p => p.CanWrite)
+                .ToDictionary(p => p.Name, p => p);
+
+            var targetList = new List<TTarget>();
+
+            foreach (var source in sourceList)
+            {
+                if (source == null)
+                    continue;
+
+                var target = new TTarget();
+
+                // Map properties using dictionaries
+                foreach (var sourceProp in sourcePropDict)
+                {
+                    if (targetPropDict.TryGetValue(sourceProp.Key, out var targetProp))
+                    {
+                        var sourceType = Nullable.GetUnderlyingType(sourceProp.Value.PropertyType)
+                            ?? sourceProp.Value.PropertyType;
+                        var targetType = Nullable.GetUnderlyingType(targetProp.PropertyType)
+                            ?? targetProp.PropertyType;
+
+                        if (sourceType == targetType)
+                        {
+                            var value = sourceProp.Value.GetValue(source);
+                            if (value != null)
+                                targetProp.SetValue(target, value);
+                        }
+                    }
+                }
+
+                targetList.Add(target);
+            }
+
+            return targetList;
+        }
     }
 }

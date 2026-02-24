@@ -9,7 +9,7 @@ namespace Models.Shared.Models
     public class ModelBase
     {
         public string? Message { get; set; }
-        public bool Success { get; set; }
+        public bool Success { get; set; } = true;
 
         public ModelBase()
         {
@@ -20,6 +20,12 @@ namespace Models.Shared.Models
         {
             Success = false;
             Message = errorMessage;
+        }
+
+        public ModelBase(bool success, string message)
+        {
+            Success = success;
+            Message = message;
         }
     }
 }

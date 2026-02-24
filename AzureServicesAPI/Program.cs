@@ -40,11 +40,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("Entra"));
 
 // Settings
-builder.Services.AddSingleton(new SettingsHelper(builder.Configuration));
+var settings = await SettingsHelper.CreateAsync(builder.Configuration);
+builder.Services.AddSingleton(settings);
 
 // DI Registration
 builder.Services.AddScoped<IKeyVaultService, KeyVaultService>();
 builder.Services.AddScoped<IKeyVaultManager, KeyVaultManager>();
+builder.Services.AddScoped<IServiceBusService, ServiceBusService>();
+builder.Services.AddScoped<IServiceBusManager, ServiceBusManager>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
