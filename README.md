@@ -5,8 +5,8 @@ A centralized Azure infrastructure API built with ASP.NET Core that provides sec
 ## Architecture
 
 ```
-Consuming App A                           ->   Azure Key Vault
-Consuming App B   ->   AzureServicesAPI   ->   Azure Service Bus (coming soon)
+Consuming App A							  ->   Azure Key Vault
+Consuming App B   ->   AzureServicesAPI   ->   Azure Service Bus
 Consuming App C                           ->   Azure Blob Storage (coming soon)
                                           
 ```
@@ -17,7 +17,7 @@ Consuming applications authenticate via Entra (Azure AD) using client credential
 
 - .NET 8 / ASP.NET Core
 - Azure Key Vault
-- Azure Service Bus *(coming soon)*
+- Azure Service Bus
 - Azure Blob Storage *(coming soon)*
 - Microsoft Identity Web (JWT validation)
 - Azure.Identity (DefaultAzureCredential)
@@ -36,6 +36,7 @@ AzureServicesAPI/
 Models.Shared/
   Base/                ModelBase with Success and Message properties
   KeyVault/            KeyVault response model
+  ServiceBus/          ServiceBus and ServiceBusList response models
   Helpers/             ModelUtility for generic model mapping
 ```
 
@@ -47,7 +48,6 @@ Models.Shared/
 - An Azure subscription
 - An Azure Entra (Azure AD) tenant
 - Visual Studio 2022 or later
-
 
 ### Configuration
 
@@ -112,7 +112,10 @@ The API needs an app role so consuming applications can be granted permission to
 ]
 ```
 
-Generate a unique GUID for the `id`.
+Generate a unique GUID for the `id` field using PowerShell:
+```powershell
+New-Guid
+```
 
 3. Hit **Save**
 
@@ -170,6 +173,7 @@ Create `appsettings.Development.json` in the `AzureServicesAPI` project:
 }
 ```
 
+
 ### Step 8 - Add Your Azure Account to Visual Studio
 
 `DefaultAzureCredential` uses your Visual Studio account to authenticate to Key Vault locally.
@@ -206,8 +210,6 @@ $response.access_token
 2. Enter `Bearer your-token-value`
 3. Hit **Authorize**
 
-You can now call the Key Vault endpoints.
-
 ### Key Vault Endpoints
 
 | Method | Endpoint | Description |
@@ -218,9 +220,86 @@ You can now call the Key Vault endpoints.
 
 ---
 
-## Service Bus Setup
+## Azure Service Bus Setup
 
-*Coming soon*
+### Step 1 - Create a Service Bus Namespace
+
+1. In the Azure portal search for **Service Bus** and select **Create**
+2. Select your existing resource group
+3. Give the namespace a globally unique name (e.g. `yourname-sb`)
+4. Select the same region as your other resources
+5. Select **Basic** pricing tier for queue support
+6. Hit **Review + Create**
+
+> Note: Basic tier supports queues only. To use topics upgrade to Standard tier in the namespace settings. No resources need to be recreated.
+
+### Step 2 - Create a Queue
+
+1. Go to your Service Bus namespace
+2. Click **Queues** in the left menu then **+ Queue**
+3. Give it a name (e.g. `main-queue`)
+4. Leave all other settings as default
+5. Hit **Create**
+
+### Step 3 - Get the Connection String
+
+1. In your Service Bus namespace click **Shared Access Policies**
+2. Click **RootManageSharedAccessKey**
+3. Copy the **Primary Connection String**
+
+### Step 4 - Store Connection String in Key Vault
+
+Rather than storing the Service Bus connection string directly in config, it is stored as a secret in Key Vault. Your config only stores the secret namemaking it safe to commit.
+
+1. Go to your Key Vault and click **Secrets**
+2. Click **Generate/Import**
+3. Name it `servicebus-connection-string`
+4. Paste the Primary Connection String as the value
+5. Hit **Create**
+
+### Step 5 - Grant Service Bus Access
+
+Your account needs permission to send and receive messages during local development.
+
+1. Go to your Service Bus namespace in the Azure portal
+2. Click **Access Control (IAM)** then **Add role assignment**
+3. Search for and assign **Azure Service Bus Data Owner** to your account
+4. Hit **Review + assign**
+
+Allow a few minutes for the role assignment to propagate.
+
+### Step 6 - Update Local Settings
+
+Confirm your `appsettings.Development.json` has the Service Bus section:
+
+```json
+{
+  "ServiceBus": {
+    "ConnectionKey": "servicebus-connection-string",
+    "QueueName": "main-queue"
+  }
+}
+```
+
+`ConnectionKey` must match the secret name you created in Key Vault in Step 4.
+
+### Service Bus Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/servicebus/send` | Send a message to the queue |
+| GET | `/api/servicebus/peek` | Peek at the next message without consuming it |
+| GET | `/api/servicebus/receive` | Receive and complete a message atomically |
+| GET | `/api/servicebus/deadletter` | Peek all messages in the dead letter queue |
+| POST | `/api/servicebus/deadletter/resend/{sequenceNumber}` | Resend a specific dead letter message by sequence number |
+
+### Service Bus Design Notes
+
+**Receive and Complete** — receiving and completing a message happens in a single atomic operation. This is intentional. Since the API is stateless it cannot hold a message lock between requests. If your consuming application needs to process a message before acknowledging it, implement your own Service Bus listener using the connection string retrieved from Key Vault.
+
+**Dead Letter Queue** — messages that fail processing repeatedly are automatically moved to the dead letter queue by Service Bus after exceeding the maximum delivery count (default 10). Use the dead letter endpoints to inspect and selectively resend failed messages by sequence number.
+
+**Topics** — not currently supported on Basic tier. Upgrade the namespace to Standard tier and topic endpoints will be added in a future update.
 
 ---
 
@@ -235,15 +314,19 @@ You can now call the Key Vault endpoints.
 When deployed to Azure App Service, managed identities replace client secrets entirely. No credentials are stored anywhere.
 
 1. Enable a system-assigned managed identity on your App Service
-2. Grant the managed identity **Key Vault Secrets Officer** role on your Key Vault
+2. Grant the managed identity the following roles:
+   - **Key Vault Secrets Officer** on your Key Vault
+   - **Azure Service Bus Data Owner** on your Service Bus namespace
 3. Add application settings in App Service Configuration:
 
 ```
-Entra__Instance     = https://login.microsoftonline.com/
-Entra__TenantId     = your-tenant-id
-Entra__ClientId     = your-client-id
-Entra__Audience     = api://your-client-id
-KeyVault__VaultUri  = https://your-keyvault-name.vault.azure.net/
+Entra__Instance                  = https://login.microsoftonline.com/
+Entra__TenantId                  = your-tenant-id
+Entra__ClientId                  = your-client-id
+Entra__Audience                  = api://your-client-id
+KeyVault__VaultUri               = https://your-keyvault-name.vault.azure.net/
+ServiceBus__ConnectionStringKey  = servicebus-connection-string
+ServiceBus__QueueName            = your-queue-name
 ```
 
 The double underscore `__` maps to nested JSON config automatically. No code changes needed between development and production.
@@ -256,3 +339,4 @@ The double underscore `__` maps to nested JSON config automatically. No code cha
 - Rotate client secrets regularly in development
 - In production always use managed identities over client secrets
 - Grant only the minimum required roles (Secrets User for read-only, Secrets Officer for read/write)
+- All sensitive values including connection strings are stored in Key Vault — config files only hold secret names
