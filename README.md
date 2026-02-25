@@ -7,8 +7,7 @@ A centralized Azure infrastructure API built with ASP.NET Core that provides sec
 ```
 Consuming App A							  ->   Azure Key Vault
 Consuming App B   ->   AzureServicesAPI   ->   Azure Service Bus
-Consuming App C                           ->   Azure Blob Storage (coming soon)
-                                          
+Consuming App C                           ->   Azure Blob Storage
 ```
 
 Consuming applications authenticate via Entra (Azure AD) using client credentials and receive a JWT token. That token is used to call this API, which handles all Azure service communication internally using its own managed identity.
@@ -18,7 +17,7 @@ Consuming applications authenticate via Entra (Azure AD) using client credential
 - .NET 8 / ASP.NET Core
 - Azure Key Vault
 - Azure Service Bus
-- Azure Blob Storage *(coming soon)*
+- Azure Blob Storage
 - Microsoft Identity Web (JWT validation)
 - Azure.Identity (DefaultAzureCredential)
 
@@ -30,13 +29,15 @@ AzureServicesAPI/
   Managers/            Business logic, model mapping, error handling
   Services/            Azure SDK calls
   Interfaces/          IKeyVaultManager, IKeyVaultService, etc.
-  Helpers/             SettingsHelper (configuration)
+  Helpers/             SettingsHelper, ContentTypeHelper
+  Filters/             Action filters
   DataModels/          Internal request/transfer models (not exposed publicly)
 
 Models.Shared/
   Base/                ModelBase with Success and Message properties
   KeyVault/            KeyVault response model
   ServiceBus/          ServiceBus and ServiceBusList response models
+  BlobStorage/         BlobStorage and BlobStorageList response models
   Helpers/             ModelUtility for generic model mapping
 ```
 
@@ -299,13 +300,85 @@ Confirm your `appsettings.Development.json` has the Service Bus section:
 
 **Dead Letter Queue** — messages that fail processing repeatedly are automatically moved to the dead letter queue by Service Bus after exceeding the maximum delivery count (default 10). Use the dead letter endpoints to inspect and selectively resend failed messages by sequence number.
 
-**Topics** — not currently supported on Basic tier. Upgrade the namespace to Standard tier and topic endpoints will be added in a future update.
-
 ---
 
-## Blob Storage Setup
+## Azure Blob Storage Setup
 
-*Coming soon*
+### Step 1 - Create a Storage Account
+
+1. In the Azure portal search for **Storage Account** and select **Create**
+2. Select your existing resource group
+3. Give the storage account a globally unique name, lowercase letters and numbers only (e.g. `yournameinfrast`)
+4. Select the same region as your other resources
+5. Set **Performance** to Standard
+6. Set **Redundancy** to Locally Redundant Storage (LRS)
+7. Hit **Review + Create**
+
+### Step 2 - Create a Container
+
+1. Go to your Storage Account and click **Containers** in the left menu
+2. Click **+ Container**
+3. Give it a name (e.g. `general`)
+4. Set public access level to **Private**
+5. Hit **Create**
+
+### Step 3 - Get the Connection String
+
+1. Go to your Storage Account and click **Access keys** in the left menu
+2. Click **Show** next to key1
+3. Copy the **Connection string**
+
+### Step 4 - Store Connection String in Key Vault
+
+1. Go to your Key Vault and click **Secrets**
+2. Click **Generate/Import**
+3. Name it `blobstorage-connection-string`
+4. Paste the connection string as the value
+5. Hit **Create**
+
+### Step 5 - Grant Blob Storage Access
+
+Your account needs permission to read and write blobs during local development.
+
+1. Go to your Storage Account in the Azure portal
+2. Click **Access Control (IAM)** then **Add role assignment**
+3. Search for and assign **Storage Blob Data Contributor** to your account
+4. Hit **Review + assign**
+
+Allow a few minutes for the role assignment to propagate.
+
+### Step 6 - Update Local Settings
+
+Add the Blob Storage section to your `appsettings.Development.json`:
+
+```json
+{
+  "BlobStorage": {
+    "ConnectionStringKey": "blobstorage-connection-string"
+  }
+}
+```
+
+`ConnectionStringKey` must match the secret name you created in Key Vault in Step 4.
+
+### Blob Storage Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/blobstorage/upload` | Upload a file as Base64 encoded JSON |
+| GET | `/api/blobstorage/{containerName}/{blobName}` | Download a file as Base64 encoded JSON |
+| GET | `/api/blobstorage/{containerName}?prefix={prefix}` | List blobs in a container, optionally filtered by prefix |
+| DELETE | `/api/blobstorage/{containerName}/{blobName}` | Delete a blob |
+
+### Blob Storage Design Notes
+
+**Base64 encoding** — file content is transmitted as Base64 encoded strings in JSON request and response bodies. This keeps the API consistent — everything in and out is JSON. Consuming apps encode files to Base64 before uploading and decode the Base64 string after downloading.
+
+**Content types** — the API validates content types against a list of supported MIME types. If an invalid or missing content type is provided it defaults to `application/octet-stream`. Supported types include common image, document, text, audio, video, and archive formats.
+
+**List vs Download** — the list endpoint returns metadata only (name, content type, size, last modified). Content is not included in list responses. Use the download endpoint to retrieve the content of a specific blob. This follows the same pattern used by all major cloud storage providers.
+
+**Prefix filtering** — the list endpoint supports an optional `prefix` query parameter to filter blobs by name prefix. For example `?prefix=images/` returns only blobs whose names start with `images/`.
 
 ---
 
@@ -317,16 +390,18 @@ When deployed to Azure App Service, managed identities replace client secrets en
 2. Grant the managed identity the following roles:
    - **Key Vault Secrets Officer** on your Key Vault
    - **Azure Service Bus Data Owner** on your Service Bus namespace
+   - **Storage Blob Data Contributor** on your Storage Account
 3. Add application settings in App Service Configuration:
 
 ```
-Entra__Instance                  = https://login.microsoftonline.com/
-Entra__TenantId                  = your-tenant-id
-Entra__ClientId                  = your-client-id
-Entra__Audience                  = api://your-client-id
-KeyVault__VaultUri               = https://your-keyvault-name.vault.azure.net/
-ServiceBus__ConnectionStringKey  = servicebus-connection-string
-ServiceBus__QueueName            = your-queue-name
+Entra__Instance                    = https://login.microsoftonline.com/
+Entra__TenantId                    = your-tenant-id
+Entra__ClientId                    = your-client-id
+Entra__Audience                    = api://your-client-id
+KeyVault__VaultUri                 = https://your-keyvault-name.vault.azure.net/
+ServiceBus__ConnectionStringKey    = servicebus-connection-string
+ServiceBus__QueueName              = your-queue-name
+BlobStorage__ConnectionStringKey   = blobstorage-connection-string
 ```
 
 The double underscore `__` maps to nested JSON config automatically. No code changes needed between development and production.
