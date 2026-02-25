@@ -31,9 +31,12 @@ namespace AzureServicesAPI.Controllers
         }
 
         [HttpGet("peek")]
-        public async Task<IActionResult> PeekMessageAsync()
+        public async Task<IActionResult> PeekMessagesAsync([FromQuery] int count = 1)
         {
-            var result = await _serviceBusManager.PeekMessageAsync();
+            if (count < 1 || count > 100)
+                return BadRequest("Count must be between 1 and 100.");
+
+            var result = await _serviceBusManager.PeekMessagesAsync(count);
             if (!result.Success)
                 return BadRequest(result);
 

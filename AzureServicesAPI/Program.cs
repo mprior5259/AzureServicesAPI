@@ -33,6 +33,12 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
+
+    c.MapType<IFormFile>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
 });
 
 // Entra JWT Authentication
@@ -48,6 +54,8 @@ builder.Services.AddScoped<IKeyVaultService, KeyVaultService>();
 builder.Services.AddScoped<IKeyVaultManager, KeyVaultManager>();
 builder.Services.AddScoped<IServiceBusService, ServiceBusService>();
 builder.Services.AddScoped<IServiceBusManager, ServiceBusManager>();
+builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
+builder.Services.AddScoped<IBlobStorageManager, BlobStorageManager>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

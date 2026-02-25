@@ -38,6 +38,12 @@ namespace AzureServicesAPI.Managers
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(request.SecretName))
+                    return new KeyVault("SecretName cannon be empty.");
+
+                if (string.IsNullOrWhiteSpace(request.SecretValue))
+                    return new KeyVault("SecretValue cannot be empty.");
+
                 var data = ModelUtility.TryParseModel<KeyVault, KeyVaultData>(request);
                 if (data == null)
                     return new KeyVault("Failed to parse request.");

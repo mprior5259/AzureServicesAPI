@@ -8,15 +8,18 @@ namespace AzureServicesAPI.Helpers
         public string KeyVaultUri { get; }
         public string ServiceBusConnectionString { get; }
         public string ServiceBusQueueName { get; }
+        public string BlobStorageConnectionString { get; }
 
         private SettingsHelper(
             string keyVaultUri,
             string serviceBusConnectionString,
-            string serviceBusQueueName)
+            string serviceBusQueueName,
+            string blobStorageConnectionString)
         {
             KeyVaultUri = keyVaultUri;
             ServiceBusConnectionString = serviceBusConnectionString;
             ServiceBusQueueName = serviceBusQueueName;
+            BlobStorageConnectionString = blobStorageConnectionString;
         }
 
         public static async Task<SettingsHelper> CreateAsync(IConfiguration configuration)
@@ -31,21 +34,29 @@ namespace AzureServicesAPI.Helpers
 
             var serviceBusKey = configuration["ServiceBus:ConnectionKey"]
                 ?? throw new InvalidOperationException("ServiceBus connection key is not configured.");
-
+            
             var serviceBusQueueName = configuration["ServiceBus:QueueName"]
                 ?? throw new InvalidOperationException("ServiceBusQueueName is not configured.");
 
+            var blobStorageKey = configuration["BlobStorage:ConnectionKey"]
+                ?? throw new InvalidOperationException("BlobStorage connection key is not configured.");
+
             // Fetch all secrets in parallel
             var serviceBusConnectionStringTask = secretClient.GetSecretAsync(serviceBusKey);
+            var blobStorageConnectionStringTask = secretClient.GetSecretAsync(blobStorageKey);
 
-            // When you add more secrets later just add them here
-            await Task.WhenAll(serviceBusConnectionStringTask);
+            await Task.WhenAll(
+                serviceBusConnectionStringTask,
+                blobStorageConnectionStringTask
+            );
 
             return new SettingsHelper(
                 keyVaultUri,
                 serviceBusConnectionStringTask.Result.Value.Value
                     ?? throw new InvalidOperationException("ServiceBus ConnectionString not found in Key Vault."),
-                serviceBusQueueName
+                serviceBusQueueName,
+                blobStorageConnectionStringTask.Result.Value.Value
+                    ?? throw new InvalidOperationException("BlobStorage ConnectionString not found in Key Vault.")
             );
         }
     }

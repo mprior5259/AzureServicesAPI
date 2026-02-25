@@ -18,6 +18,20 @@ namespace AzureServicesAPI.Managers
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(request.Body))
+                    return new ServiceBus("Message body cannot be empty.");
+
+                // Auto-generate MessageId if not provided
+                if (string.IsNullOrWhiteSpace(request.MessageId))
+                    request.MessageId = Guid.NewGuid().ToString();
+
+                // Clear optional fields if empty
+                if (string.IsNullOrWhiteSpace(request.CorrelationId))
+                    request.CorrelationId = null;
+
+                if (string.IsNullOrWhiteSpace(request.Subject))
+                    request.Subject = null;
+
                 var data = ModelUtility.TryParseModel<ServiceBus, ServiceBusData>(request);
                 if (data == null)
                     return new ServiceBus("Failed to parse request.");
@@ -35,20 +49,22 @@ namespace AzureServicesAPI.Managers
             }
         }
 
-        public async Task<ServiceBus> PeekMessageAsync()
+        public async Task<ServiceBusList> PeekMessagesAsync(int count = 1)
         {
             try
             {
-                var result = await _serviceBusService.PeekMessageAsync();
-                if (result == null)
-                    return new ServiceBus(true, "Queue is empty.");
+                var results = await _serviceBusService.PeekMessagesAsync(count);
 
-                var response = ModelUtility.TryParseModel<ServiceBusData, ServiceBus>(result);
-                return response ?? new ServiceBus("Failed to parse response.");
+                if (!results.Any())
+                    return new ServiceBusList(true, "Queue is empty.");
+
+                var response = new ServiceBusList();
+                response.Messages = ModelUtility.TryParseModelList<ServiceBusData, ServiceBus>(results);
+                return response;
             }
             catch (Exception ex)
             {
-                return new ServiceBus(ex.Message);
+                return new ServiceBusList(ex.Message);
             }
         }
 

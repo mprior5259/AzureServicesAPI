@@ -56,13 +56,10 @@ namespace AzureServicesAPI.Services
             }
         }
 
-        public async Task<ServiceBusData?> PeekMessageAsync()
+        public async Task<List<ServiceBusData>> PeekMessagesAsync(int count = 1)
         {
-            var message = await _receiver.PeekMessageAsync();
-            if (message == null)
-                return null;
-
-            return MapToData(message);
+            var messages = await _receiver.PeekMessagesAsync(maxMessages: count);
+            return messages.Select(m => MapToData(m)).ToList();
         }
 
         public async Task<ServiceBusData?> ReceiveAndCompleteAsync()
