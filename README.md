@@ -288,7 +288,7 @@ Confirm your `appsettings.Development.json` has the Service Bus section:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/servicebus/send` | Send a message to the queue |
-| GET | `/api/servicebus/peek` | Peek at the next message without consuming it |
+| GET | `/api/servicebus/peek/?{count}` | Peek at the next message without consuming it. Count defaulted to 1 but can peek up to 100 messages |
 | GET | `/api/servicebus/receive` | Receive and complete a message atomically |
 | GET | `/api/servicebus/deadletter` | Peek all messages in the dead letter queue |
 | POST | `/api/servicebus/deadletter/resend/{sequenceNumber}` | Resend a specific dead letter message by sequence number |
