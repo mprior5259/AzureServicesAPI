@@ -30,7 +30,6 @@ AzureServicesAPI/
   Services/            Azure SDK calls
   Interfaces/          IKeyVaultManager, IKeyVaultService, etc.
   Helpers/             SettingsHelper, ContentTypeHelper
-  Filters/             Action filters
   DataModels/          Internal request/transfer models (not exposed publicly)
 
 Models.Shared/
