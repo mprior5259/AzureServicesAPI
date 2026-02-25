@@ -375,7 +375,7 @@ Add the Blob Storage section to your `appsettings.Development.json`:
 
 **Content types** — the API validates content types against a list of supported MIME types. If an invalid or missing content type is provided it defaults to `application/octet-stream`. Supported types include common image, document, text, audio, video, and archive formats.
 
-**List vs Download** — the list endpoint returns metadata only (name, content type, size, last modified). Content is not included in list responses. Use the download endpoint to retrieve the content of a specific blob. This follows the same pattern used by all major cloud storage providers.
+**List vs Download** — the list endpoint returns metadata only (name, content type, size, last modified). Content is not included in list responses. Use the download endpoint to retrieve the content of a specific blob.
 
 **Prefix filtering** — the list endpoint supports an optional `prefix` query parameter to filter blobs by name prefix. For example `?prefix=images/` returns only blobs whose names start with `images/`.
 
