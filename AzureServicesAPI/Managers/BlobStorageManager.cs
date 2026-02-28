@@ -31,15 +31,6 @@ namespace AzureServicesAPI.Managers
                 if (data == null)
                     return new BlobStorage("Failed to parse request.");
 
-                try
-                {
-                    data.Content = Convert.FromBase64String(request.Content);
-                }
-                catch
-                {
-                    return new BlobStorage("Content is not a valid Base64 string.");
-                }
-
                 var result = await _blobStorageService.UploadAsync(data);
                 if (result == null)
                     return new BlobStorage("Failed to upload file.");
@@ -47,9 +38,7 @@ namespace AzureServicesAPI.Managers
                 var response = ModelUtility.TryParseModel<BlobStorageData, BlobStorage>(result);
                 if (response == null)
                     return new BlobStorage("Failed to parse response.");
-                
-                response.ContentType = Convert.ToBase64String(result.Content);
-                
+
                 return response;
             }
             catch (Exception ex)
@@ -57,24 +46,20 @@ namespace AzureServicesAPI.Managers
                 return new BlobStorage(ex.Message);
             }
         }
+
         public async Task<BlobStorage> DownloadAsync(string containerName, string blobName)
         {
             try
             {
                 var result = await _blobStorageService.DownloadAsync(containerName, blobName);
                 if (result == null)
-                    return new BlobStorage(true, $"Blob '{blobName}' not found in container '{containerName}'.");
+                    return new BlobStorage($"Blob '{blobName}' not found in container '{containerName}'.");
 
                 var response = ModelUtility.TryParseModel<BlobStorageData, BlobStorage>(result);
                 if (response == null)
                     return new BlobStorage("Failed to parse response.");
 
-                if (result.Content != null && result.Content.Length > 0)
-                {
-                    response.Content = Convert.ToBase64String(result.Content);
-                }
-
-                return response ?? new BlobStorage("Failed to parse response.");
+                return response;
             }
             catch (Exception ex)
             {
@@ -90,8 +75,8 @@ namespace AzureServicesAPI.Managers
 
                 if (!results.Any())
                     return prefix == null
-                        ? new BlobStorageList(true, $"No blobs found in container '{containerName}'.")
-                        : new BlobStorageList(true, $"No blobs found in container '{containerName}' with prefix {prefix}.");
+                        ? new BlobStorageList($"No blobs found in container '{containerName}'.")
+                        : new BlobStorageList($"No blobs found in container '{containerName}' with prefix '{prefix}'.");
 
                 var response = new BlobStorageList();
                 response.Blobs = ModelUtility.TryParseModelList<BlobStorageData, BlobStorage>(results);
@@ -109,7 +94,7 @@ namespace AzureServicesAPI.Managers
             {
                 var success = await _blobStorageService.DeleteAsync(containerName, blobName);
                 if (!success)
-                    return new BlobStorage(true, $"Blob '{blobName}' not found or already deleted.");
+                    return new BlobStorage($"Blob '{blobName}' not found or already deleted.");
 
                 return new BlobStorage(true, $"Blob '{blobName}' deleted successfully.");
             }
