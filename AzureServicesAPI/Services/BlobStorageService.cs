@@ -3,8 +3,6 @@ using Azure.Storage.Blobs.Models;
 using AzureServicesAPI.DataModels;
 using AzureServicesAPI.Helpers;
 using AzureServicesAPI.Interfaces;
-using Microsoft.Azure.Amqp.Framing;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AzureServicesAPI.Services
 {

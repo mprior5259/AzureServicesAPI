@@ -13,7 +13,7 @@ namespace Models.Shared.Models.AzureServices
         public string? ContentType { get; set; }
         public long? FileSize { get; set; }
         public DateTimeOffset? LastModified { get; set; }
-        public string? Content { get; set; }
+        public byte[]? Content { get; set; }
 
         public BlobStorage() : base() { }
 
