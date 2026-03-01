@@ -38,6 +38,12 @@ Models.Shared/
   ServiceBus/          ServiceBus and ServiceBusList response models
   BlobStorage/         BlobStorage and BlobStorageList response models
   Helpers/             ModelUtility for generic model mapping
+
+ClientApp.Test/
+  Helpers/             KeyVaultHelper, ServiceBusHelper, BlobStorageHelper
+  AzureServicesApiProxy.cs   HTTP proxy for all API calls
+  AuthTokenHelper.cs         Entra token acquisition
+  Program.cs                 Menu navigation
 ```
 
 ## Getting Started
@@ -119,31 +125,7 @@ New-Guid
 
 3. Hit **Save**
 
-### Step 5 - Register a Client Application in Entra
-
-This represents any application that will call your Infrastructure API.
-
-1. Go back to **App Registrations** and create a new registration
-2. Name it `AzureServicesAPI-Client` (or your consuming app name)
-3. Select **Single tenant**
-4. Leave Redirect URI blank
-5. Hit **Register**
-
-Copy the **Application (client) ID** for this registration.
-
-**Create a client secret:**
-1. Click **Certificates and Secrets** then **New client secret**
-2. Give it a description and expiry
-3. Copy the secret **Value** immediately — it is only shown once
-
-**Grant permission to call the API:**
-1. Click **API Permissions** then **Add a permission**
-2. Select **My APIs** then find `AzureServicesAPI`
-3. Select **Application permissions** and check `access_as_application`
-4. Hit **Add permissions**
-5. Click **Grant admin consent for your tenant** and confirm
-
-### Step 6 - Grant Key Vault Access
+### Step 5 - Grant Key Vault Access
 
 Your account needs permission to read and write secrets during local development.
 
@@ -154,7 +136,7 @@ Your account needs permission to read and write secrets during local development
 
 Allow a few minutes for the role assignment to propagate.
 
-### Step 7 - Configure Local Settings
+### Step 6 - Configure Local Settings
 
 Create `appsettings.Development.json` in the `AzureServicesAPI` project:
 
@@ -173,8 +155,7 @@ Create `appsettings.Development.json` in the `AzureServicesAPI` project:
 }
 ```
 
-
-### Step 8 - Add Your Azure Account to Visual Studio
+### Step 7 - Add Your Azure Account to Visual Studio
 
 `DefaultAzureCredential` uses your Visual Studio account to authenticate to Key Vault locally.
 
@@ -182,7 +163,7 @@ Create `appsettings.Development.json` in the `AzureServicesAPI` project:
 2. Find **Azure Service Authentication**
 3. Add and sign in with the same account used for your Azure portal
 
-### Step 9 - Run and Test
+### Step 8 - Run and Test
 
 Run the project. Swagger UI will open at `https://localhost:{port}/swagger`.
 
@@ -299,7 +280,7 @@ Confirm your `appsettings.Development.json` has the Service Bus section:
 
 **Dead Letter Queue** — messages that fail processing repeatedly are automatically moved to the dead letter queue by Service Bus after exceeding the maximum delivery count (default 10). Use the dead letter endpoints to inspect and selectively resend failed messages by sequence number.
 
-**Sessions (planned)** — multi-team message routing via Service Bus sessions is planned but requires Standard tier. Sessions allow consuming applications to filter messages by a `SessionId`, ensuring each team only receives messages intended for them. The current implementation uses Basic tier which supports queues only.
+**Sessions (planned)** — multi-team message routing via Service Bus sessions is planned but requires Standard tier. Sessions allow consuming applications to filter messages by a `SessionId`, ensuring each team only receives messages intended for them. The current implementation uses Basic tier which supports queues only. Modifying the endpoints to handle calling separate queue names is a good work-around to ensure messages do not get tangled.
 
 ---
 
@@ -382,6 +363,61 @@ Add the Blob Storage section to your `appsettings.Development.json`:
 **List vs Download** — the list endpoint returns metadata only (name, content type, size, last modified). Content is not included in list responses. Use the download endpoint to retrieve the content of a specific blob.
 
 **Prefix filtering** — the list endpoint supports an optional `prefix` query parameter to filter blobs by name prefix. For example `?prefix=images/` returns only blobs whose names start with `images/`.
+
+---
+
+## ClientApp.Test Setup
+
+`ClientApp.Test` is a console application included in the solution that demonstrates end-to-end usage of the API. It authenticates via Entra using client credentials and provides an interactive menu for testing all Key Vault, Service Bus, and Blob Storage operations.
+
+### Step 1 - Register a Client Application in Entra
+
+This represents any application that will call the Infrastructure API.
+
+1. In the Azure portal go to **Entra ID** then **App Registrations**
+2. Click **New Registration**
+3. Name it `AzureServicesAPI-Client` (or your consuming app name)
+4. Select **Single tenant**
+5. Leave Redirect URI blank
+6. Hit **Register**
+
+Copy the **Application (client) ID** for this registration.
+
+**Create a client secret:**
+1. Click **Certificates and Secrets** then **New client secret**
+2. Give it a description and expiry
+3. Copy the secret **Value** immediately — it is only shown once
+
+**Grant permission to call the API:**
+1. Click **API Permissions** then **Add a permission**
+2. Select **My APIs** then find `AzureServicesAPI`
+3. Select **Application permissions** and check `access_as_application`
+4. Hit **Add permissions**
+5. Click **Grant admin consent for your tenant** and confirm
+
+### Step 2 - Configure Local Settings
+
+Create `appsettings.Development.json` in the `ClientApp.Test` project root:
+
+```json
+{
+  "Entra": {
+    "TenantId": "your-directory-tenant-id",
+    "ClientId": "your-client-app-client-id",
+    "ClientSecret": "your-client-secret",
+    "Scope": "api://your-azureservicesapi-client-id/.default"
+  },
+  "Api": {
+    "BaseUrl": "https://localhost:your-port"
+  }
+}
+```
+
+This file is git-ignored and will never be committed.
+
+### Step 3 - Run
+
+Start `AzureServicesAPI` first then run `ClientApp.Test`. An interactive menu will appear for testing all operations against the live API.
 
 ---
 
