@@ -13,9 +13,9 @@ namespace AzureServicesAPI.Services
         private readonly ServiceBusReceiver _deadLetterReceiver;
         private readonly string _queueName;
 
-        public ServiceBusService(SettingsHelper settings)
+        public ServiceBusService(ServiceBusClient client, SettingsHelper settings)
         {
-            _client = new ServiceBusClient(settings.ServiceBusConnectionString);
+            _client = client;
             _queueName = settings.ServiceBusQueueName;
             _sender = _client.CreateSender(_queueName);
             _receiver = _client.CreateReceiver(_queueName);

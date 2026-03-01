@@ -1,7 +1,5 @@
-﻿using Azure.Identity;
-using Azure.Security.KeyVault.Secrets;
+﻿using Azure.Security.KeyVault.Secrets;
 using AzureServicesAPI.DataModels;
-using AzureServicesAPI.Helpers;
 using AzureServicesAPI.Interfaces;
 
 namespace AzureServicesAPI.Services
@@ -10,12 +8,9 @@ namespace AzureServicesAPI.Services
     {
         private readonly SecretClient _secretClient;
 
-        public KeyVaultService(SettingsHelper settings)
+        public KeyVaultService(SecretClient secretClient)
         {
-            _secretClient = new SecretClient(
-                new Uri(settings.KeyVaultUri),
-                new DefaultAzureCredential()
-            );
+            _secretClient = secretClient;
         }
 
         public async Task<KeyVaultData?> GetSecretAsync(string secretName)
@@ -62,7 +57,7 @@ namespace AzureServicesAPI.Services
                 await _secretClient.StartDeleteSecretAsync(secretName);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }
