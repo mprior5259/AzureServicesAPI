@@ -299,6 +299,8 @@ Confirm your `appsettings.Development.json` has the Service Bus section:
 
 **Dead Letter Queue** — messages that fail processing repeatedly are automatically moved to the dead letter queue by Service Bus after exceeding the maximum delivery count (default 10). Use the dead letter endpoints to inspect and selectively resend failed messages by sequence number.
 
+**Sessions (planned)** — multi-team message routing via Service Bus sessions is planned but requires Standard tier. Sessions allow consuming applications to filter messages by a `SessionId`, ensuring each team only receives messages intended for them. The current implementation uses Basic tier which supports queues only.
+
 ---
 
 ## Azure Blob Storage Setup
