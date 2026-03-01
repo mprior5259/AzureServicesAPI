@@ -299,6 +299,8 @@ Confirm your `appsettings.Development.json` has the Service Bus section:
 
 **Dead Letter Queue** — messages that fail processing repeatedly are automatically moved to the dead letter queue by Service Bus after exceeding the maximum delivery count (default 10). Use the dead letter endpoints to inspect and selectively resend failed messages by sequence number.
 
+**Sessions (planned)** — multi-team message routing via Service Bus sessions is planned but requires Standard tier. Sessions allow consuming applications to filter messages by a `SessionId`, ensuring each team only receives messages intended for them. The current implementation uses Basic tier which supports queues only.
+
 ---
 
 ## Azure Blob Storage Setup
@@ -364,14 +366,16 @@ Add the Blob Storage section to your `appsettings.Development.json`:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/blobstorage/upload` | Upload a file as Base64 encoded JSON |
-| GET | `/api/blobstorage/{containerName}/{blobName}` | Download a file as Base64 encoded JSON |
+| POST | `/api/blobstorage/upload` | Upload a file via multipart/form-data |
+| GET | `/api/blobstorage/{containerName}/{blobName}` | Download a file as raw bytes |
 | GET | `/api/blobstorage/{containerName}?prefix={prefix}` | List blobs in a container, optionally filtered by prefix |
 | DELETE | `/api/blobstorage/{containerName}/{blobName}` | Delete a blob |
 
 ### Blob Storage Design Notes
 
-**Base64 encoding** — file content is transmitted as Base64 encoded strings in JSON request and response bodies. This keeps the API consistent — everything in and out is JSON. Consuming apps encode files to Base64 before uploading and decode the Base64 string after downloading.
+**File transfer** — upload uses `multipart/form-data` and download returns raw bytes with the appropriate content type header.
+
+**Upload fields** — the upload endpoint accepts `containerName`, `blobName`, `contentType` (optional), and `file` as form fields.
 
 **Content types** — the API validates content types against a list of supported MIME types. If an invalid or missing content type is provided it defaults to `application/octet-stream`. Supported types include common image, document, text, audio, video, and archive formats.
 

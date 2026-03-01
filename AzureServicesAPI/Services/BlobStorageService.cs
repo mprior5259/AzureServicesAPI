@@ -1,31 +1,24 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using AzureServicesAPI.DataModels;
-using AzureServicesAPI.Helpers;
 using AzureServicesAPI.Interfaces;
-using Microsoft.Azure.Amqp.Framing;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AzureServicesAPI.Services
 {
     public class BlobStorageService : IBlobStorageService
     {
-        private readonly string _connectionString;
+        private readonly BlobServiceClient _client;
 
-        public BlobStorageService(SettingsHelper settings)
+        public BlobStorageService(BlobServiceClient client)
         {
-            _connectionString = settings.BlobStorageConnectionString;
+            _client = client;
         }
 
         public async Task<BlobStorageData?> UploadAsync(BlobStorageData data)
         {
             try
             {
-                var containerClient = new BlobContainerClient(
-                    _connectionString,
-                    data.ContainerName
-                );
-
+                var containerClient = _client.GetBlobContainerClient(data.ContainerName);
                 await containerClient.CreateIfNotExistsAsync();
 
                 var blobClient = containerClient.GetBlobClient(data.BlobName);
@@ -55,11 +48,7 @@ namespace AzureServicesAPI.Services
 
         public async Task<BlobStorageData?> DownloadAsync(string containerName, string blobName)
         {
-            var containerClient = new BlobContainerClient(
-                _connectionString,
-                containerName
-            );
-
+            var containerClient = _client.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
             if (!await blobClient.ExistsAsync())
@@ -80,10 +69,11 @@ namespace AzureServicesAPI.Services
                 Content = response.Value.Content?.ToArray() ?? Array.Empty<byte>()
             };
         }
+
         public async Task<List<BlobStorageData>> ListBlobsAsync(string containerName, string? prefix = null)
         {
             var results = new List<BlobStorageData>();
-            var containerClient = new BlobContainerClient(_connectionString, containerName);
+            var containerClient = _client.GetBlobContainerClient(containerName);
 
             if (!await containerClient.ExistsAsync())
                 return results;
@@ -109,11 +99,7 @@ namespace AzureServicesAPI.Services
 
         public async Task<bool> DeleteAsync(string containerName, string blobName)
         {
-            var containerClient = new BlobContainerClient(
-                _connectionString,
-                containerName
-            );
-
+            var containerClient = _client.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
             var response = await blobClient.DeleteIfExistsAsync();
             return response.Value;

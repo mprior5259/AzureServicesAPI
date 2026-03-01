@@ -19,13 +19,26 @@ namespace AzureServicesAPI.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadAsync([FromBody] BlobStorage request)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadAsync(
+            [FromForm] string containerName,
+            [FromForm] string blobName,
+            [FromForm] string? contentType,
+            IFormFile file)
         {
-            if (request == null)
-                return BadRequest("Request cannot be empty.");
+            if (file == null || file.Length == 0)
+                return BadRequest("File cannot be empty.");
 
-            // Ensure content type being passed in is valid, otherwise default to application/octet-stream
-            request.ContentType = ContentTypeHelper.SanitizeContentType(request.ContentType);
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+
+            var request = new BlobStorage
+            {
+                ContainerName = containerName,
+                BlobName = blobName,
+                ContentType = ContentTypeHelper.SanitizeContentType(contentType ?? file.ContentType),
+                Content = memoryStream.ToArray()
+            };
 
             var result = await _blobStorageManager.UploadAsync(request);
             if (!result.Success)
@@ -42,7 +55,13 @@ namespace AzureServicesAPI.Controllers
             if (!result.Success)
                 return NotFound(result);
 
-            return Ok(result);
+            if (result.Content == null || result.Content.Length == 0)
+                return Ok(result);
+
+            return new FileContentResult(result.Content, result.ContentType ?? "application/octet-stream")
+            {
+                FileDownloadName = blobName
+            };
         }
 
         [HttpGet("{containerName}")]
