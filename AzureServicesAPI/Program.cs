@@ -1,3 +1,7 @@
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
 using AzureServicesAPI.Helpers;
 using AzureServicesAPI.Interfaces;
 using AzureServicesAPI.Managers;
@@ -18,7 +22,6 @@ builder.Services.AddSwaggerGen(c =>
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Description = "Enter your Bearer token"
     });
-
     c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
@@ -33,7 +36,6 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
-
     c.MapType<IFormFile>(() => new Microsoft.OpenApi.Models.OpenApiSchema
     {
         Type = "string",
@@ -49,7 +51,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var settings = await SettingsHelper.CreateAsync(builder.Configuration);
 builder.Services.AddSingleton(settings);
 
-// DI Registration
+// Azure SDK Clients
+builder.Services.AddSingleton(new SecretClient(
+    new Uri(settings.KeyVaultUri),
+    new DefaultAzureCredential()));
+
+builder.Services.AddSingleton(new ServiceBusClient(
+    settings.ServiceBusConnectionString));
+
+builder.Services.AddSingleton(new BlobServiceClient(
+    settings.BlobStorageConnectionString));
+
+// Services and Managers
 builder.Services.AddScoped<IKeyVaultService, KeyVaultService>();
 builder.Services.AddScoped<IKeyVaultManager, KeyVaultManager>();
 builder.Services.AddScoped<IServiceBusService, ServiceBusService>();
@@ -73,5 +86,4 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
